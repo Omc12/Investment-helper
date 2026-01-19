@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { createChart } from 'lightweight-charts';
+import { useState, useEffect } from 'react';
 
 /**
  * TrendingStocks - Top 10 stocks with sparklines
@@ -146,65 +145,30 @@ const TrendingStocks = ({ onSelectStock }) => {
  * SparklineChart - Mini line chart for trending cards
  */
 const SparklineChart = ({ data, isPositive }) => {
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
-
-  useEffect(() => {
-    if (!containerRef.current || !data || data.length === 0) return;
-
-    // Clear previous chart
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-    }
-
-    const chart = createChart(containerRef.current, {
-      width: 60,
-      height: 30,
-      layout: {
-        background: { type: 'solid', color: 'transparent' },
-        textColor: 'transparent',
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { visible: false },
-      },
-      crosshair: {
-        mode: 0, // No crosshair
-      },
-      rightPriceScale: { visible: false },
-      timeScale: { visible: false },
-      handleScale: false,
-      handleScroll: false,
-    });
-
-    const lineSeries = chart.addLineSeries({
-      color: isPositive ? '#00d09c' : '#eb5757',
-      lineWidth: 1.5,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    });
-
-    const chartData = data.map((candle, index) => ({
-      time: index,
-      value: candle.close || candle.Close || 0,
-    }));
-
-    lineSeries.setData(chartData);
-    chart.timeScale().fitContent();
-    
-    chartRef.current = chart;
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-      }
-    };
-  }, [data, isPositive]);
-
-  return <div ref={containerRef} className="sparkline-container" />;
+  // Temporary fallback until lightweight-charts issues are resolved
+  const trend = isPositive ? '↗️' : '↘️';
+  const color = isPositive ? '#00d09c' : '#eb5757';
+  
+  return (
+    <div 
+      className="sparkline-fallback"
+      style={{ 
+        width: '60px', 
+        height: '30px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        color: color,
+        fontSize: '18px',
+        border: `1px solid ${color}20`,
+        borderRadius: '4px',
+        background: `${color}10`
+      }}
+      title={`Trend: ${isPositive ? 'Up' : 'Down'}`}
+    >
+      {trend}
+    </div>
+  );
 };
 
 export default TrendingStocks;

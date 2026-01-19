@@ -21,7 +21,18 @@ const PredictionPanel = ({ ticker, stockName }) => {
       const response = await fetch(`http://localhost:8000/predict?ticker=${ticker}`);
       if (!response.ok) throw new Error('Prediction failed');
       const data = await response.json();
-      setPrediction(data);
+      
+      // Handle prediction response properly
+      const predictionValue = data.prediction || data.direction || 'Unknown';
+      const confidence = data.confidence ? (data.confidence * 100).toFixed(1) : 'N/A';
+      
+      setPrediction({
+        ...data,
+        prediction: predictionValue,
+        confidence: confidence,
+        price_target: data.price_target || data.target_price || null,
+        change_percent: data.change_percent || data.expected_change || null
+      });
     } catch (err) {
       setError(err.message);
       setPrediction(null);
@@ -34,12 +45,6 @@ const PredictionPanel = ({ ticker, stockName }) => {
     if (signal === 'BUY' || signal === 'UP') return 'up';
     if (signal === 'SELL' || signal === 'DOWN') return 'down';
     return 'hold';
-  };
-
-  const getConfidenceClass = (conf) => {
-    if (conf === 'High') return 'high';
-    if (conf === 'Medium') return 'medium';
-    return 'low';
   };
 
   if (!ticker) {
@@ -97,70 +102,52 @@ const PredictionPanel = ({ ticker, stockName }) => {
         )}
 
         {prediction && (
-          <>
+          <div>
             <div className="prediction-main-result">
               <div className="prediction-signal">
                 <span className="signal-label">Direction</span>
-                <div className={`signal-badge ${getSignalClass(prediction.signal)}`}>
-                  {prediction.signal === 'BUY' || prediction.signal === 'UP' ? '↑ UP' : 
-                   prediction.signal === 'SELL' || prediction.signal === 'DOWN' ? '↓ DOWN' : 
+                <div className={`signal-badge ${getSignalClass(prediction.prediction || prediction.signal)}`}>
+                  {(prediction.prediction || prediction.signal) === 'BUY' || (prediction.prediction || prediction.signal) === 'UP' ? '↑ UP' : 
+                   (prediction.prediction || prediction.signal) === 'SELL' || (prediction.prediction || prediction.signal) === 'DOWN' ? '↓ DOWN' : 
                    'HOLD'}
                 </div>
               </div>
 
               <div className="prediction-probability">
-                <span className="probability-label">Probability Up</span>
+                <span className="probability-label">Confidence</span>
                 <div className="probability-value">
-                  {(prediction.probability * 100).toFixed(1)}%
+                  {prediction.confidence && !isNaN(prediction.confidence) ? `${prediction.confidence}%` : 'N/A'}
                 </div>
               </div>
 
-              <div className="prediction-confidence">
-                <span className="signal-label">Confidence</span>
-                <div className={`confidence-badge ${getConfidenceClass(prediction.confidence)}`}>
-                  {prediction.confidence}
+              {prediction.price_target && !isNaN(prediction.price_target) && (
+                <div className="prediction-confidence">
+                  <span className="signal-label">Price Target</span>
+                  <div className="confidence-badge">
+                    ₹{parseFloat(prediction.price_target).toFixed(2)}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {prediction.validation_scores && (
+            {prediction.change_percent && !isNaN(prediction.change_percent) && (
               <div className="prediction-metrics">
                 <div className="metric-item">
-                  <span className="metric-label">Fold 1 Accuracy</span>
+                  <span className="metric-label">Expected Change</span>
                   <span className="metric-value">
-                    {(prediction.validation_scores.fold_1 * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Fold 2 Accuracy</span>
-                  <span className="metric-value">
-                    {(prediction.validation_scores.fold_2 * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Fold 3 Accuracy</span>
-                  <span className="metric-value">
-                    {(prediction.validation_scores.fold_3 * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Average Accuracy</span>
-                  <span className="metric-value" style={{ color: 'var(--accent-green)' }}>
-                    {(prediction.validation_scores.average * 100).toFixed(1)}%
+                    {parseFloat(prediction.change_percent).toFixed(2)}%
                   </span>
                 </div>
               </div>
             )}
 
-            {prediction.features_used && (
-              <div className="prediction-metrics" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            {prediction.accuracy && !isNaN(prediction.accuracy) && (
+              <div className="prediction-metrics">
                 <div className="metric-item">
-                  <span className="metric-label">Features Used</span>
-                  <span className="metric-value">{prediction.features_used}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Model</span>
-                  <span className="metric-value">HistGradientBoosting</span>
+                  <span className="metric-label">Model Accuracy</span>
+                  <span className="metric-value">
+                    {(parseFloat(prediction.accuracy) * 100).toFixed(1)}%
+                  </span>
                 </div>
               </div>
             )}
@@ -172,7 +159,7 @@ const PredictionPanel = ({ ticker, stockName }) => {
                 Always do your own research before investing.
               </span>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
