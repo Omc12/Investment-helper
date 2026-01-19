@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createChart } from 'lightweight-charts';
 
 /**
  * TrendingStocks - Top 10 stocks with sparklines
@@ -145,29 +146,119 @@ const TrendingStocks = ({ onSelectStock }) => {
  * SparklineChart - Mini line chart for trending cards
  */
 const SparklineChart = ({ data, isPositive }) => {
-  // Temporary fallback until lightweight-charts issues are resolved
-  const trend = isPositive ? '↗️' : '↘️';
-  const color = isPositive ? '#00d09c' : '#eb5757';
-  
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !data || data.length === 0) return;
+
+    // Clear previous chart with proper disposal check
+    if (chartRef.current) {
+      try {
+        if (!chartRef.current._disposed) {
+          chartRef.current.remove();
+        }
+      } catch (error) {
+        console.warn('Error removing chart:', error);
+      } finally {
+        chartRef.current = null;
+      }
+    }
+
+    try {
+      const chart = createChart(containerRef.current, {
+        width: 60,
+        height: 30,
+        layout: {
+          background: { type: 'solid', color: 'transparent' },
+          textColor: 'transparent',
+        },
+        grid: {
+          vertLines: { visible: false },
+          horzLines: { visible: false },
+        },
+        crosshair: { mode: 0 },
+        rightPriceScale: { visible: false },
+        timeScale: { visible: false },
+        handleScale: false,
+        handleScroll: false,
+      });
+
+      const lineSeries = chart.addLineSeries({
+        color: isPositive ? '#00d09c' : '#eb5757',
+        lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+
+      // Process chart data with validation
+      const chartData = data
+        .map((candle, index) => {
+          const value = parseFloat(candle.close || candle.Close || 0);
+          if (isNaN(value)) {
+            console.warn('Invalid candle value:', candle);
+            return null;
+          }
+          return {
+            time: index,
+            value: value,
+          };
+        })
+        .filter(item => item !== null);
+
+      if (chartData.length > 0) {
+        lineSeries.setData(chartData);
+        chart.timeScale().fitContent();
+      }
+      
+      chartRef.current = chart;
+
+    } catch (error) {
+      console.error('Error creating sparkline chart:', error);
+      // Fallback to simple indicator on error
+      if (containerRef.current) {
+        const trend = isPositive ? '↗️' : '↘️';
+        containerRef.current.innerHTML = `
+          <div style="
+            width: 60px; 
+            height: 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            color: ${isPositive ? '#00d09c' : '#eb5757'};
+            font-size: 16px;
+            border: 1px solid ${isPositive ? '#00d09c' : '#eb5757'}20;
+            border-radius: 4px;
+            background: ${isPositive ? '#00d09c' : '#eb5757'}10;
+          ">
+            ${trend}
+          </div>
+        `;
+      }
+    }
+
+    return () => {
+      if (chartRef.current) {
+        try {
+          if (!chartRef.current._disposed) {
+            chartRef.current.remove();
+          }
+        } catch (error) {
+          console.warn('Error removing chart in cleanup:', error);
+        } finally {
+          chartRef.current = null;
+        }
+      }
+    };
+  }, [data, isPositive]);
+
   return (
     <div 
-      className="sparkline-fallback"
-      style={{ 
-        width: '60px', 
-        height: '30px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        color: color,
-        fontSize: '18px',
-        border: `1px solid ${color}20`,
-        borderRadius: '4px',
-        background: `${color}10`
-      }}
-      title={`Trend: ${isPositive ? 'Up' : 'Down'}`}
-    >
-      {trend}
-    </div>
+      ref={containerRef} 
+      className="sparkline-container" 
+      style={{ width: '60px', height: '30px' }}
+    />
   );
 };
 
