@@ -28,7 +28,7 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced search
+  // Debounced search with dynamic API lookup
   useEffect(() => {
     if (!query || query.length < 1) {
       setResults([]);
@@ -39,21 +39,52 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
+        // Use the dynamic search endpoint
         const response = await fetch(
-          `http://localhost:8000/stocks/search?query=${encodeURIComponent(query)}`
+          `http://localhost:8000/stocks/search?q=${encodeURIComponent(query)}`
         );
+        
+        if (!response.ok) {
+          throw new Error('Search failed');
+        }
+        
         const data = await response.json();
-        const stockResults = data.results || data || []; // Extract results array from response
-        setResults(stockResults.slice(0, 10)); // Limit to 10 results
-        setShowDropdown(true);
+        const stockResults = data.results || [];
+        
+        // If no results from main search, try direct lookup
+        if (stockResults.length === 0 && query.length >= 2) {
+          try {
+            const lookupResponse = await fetch(
+              `http://localhost:8000/stocks/lookup?ticker=${encodeURIComponent(query)}`
+            );
+            
+            if (lookupResponse.ok) {
+              const lookupData = await lookupResponse.json();
+              if (lookupData.found) {
+                stockResults.push(lookupData.stock);
+                // Add other matches if available
+                if (lookupData.all_matches) {
+                  stockResults.push(...lookupData.all_matches.slice(1));
+                }
+              }
+            }
+          } catch (lookupError) {
+            // Lookup failed, continue with main search results
+            console.log('Lookup failed, using main search results');
+          }
+        }
+        
+        setResults(stockResults.slice(0, 15)); // Increased to 15 results
+        setShowDropdown(stockResults.length > 0);
         setSelectedIndex(-1);
       } catch (error) {
         console.error('Search error:', error);
         setResults([]);
+        setShowDropdown(false);
       } finally {
         setLoading(false);
       }
-    }, 200);
+    }, 300); // Slightly increased delay for API calls
 
     return () => clearTimeout(timer);
   }, [query]);
@@ -62,7 +93,19 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
     setQuery('');
     setShowDropdown(false);
     setResults([]);
-    onSelectStock(stock);
+    
+    // Normalize stock data structure
+    const normalizedStock = {
+      name: stock.name,
+      ticker: stock.symbol || stock.ticker,
+      symbol: stock.symbol || stock.ticker,
+      sector: stock.sector,
+      exchange: stock.exchange,
+      current_price: stock.current_price || stock.price,
+      ...stock // Keep all other properties
+    };
+    
+    onSelectStock(normalizedStock);
   };
 
   const handleKeyDown = (e) => {
@@ -127,26 +170,44 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
 
       {showDropdown && (
         <div className="search-dropdown" ref={dropdownRef}>
-          {results.length > 0 ? (
+          {loading ? (
+            <div className="search-loading">
+              <div className="loading-spinner"></div>
+              <span>Searching across NSE & BSE...</span>
+            </div>
+          ) : results.length > 0 ? (
             results.map((stock, index) => (
               <div
-                key={stock.ticker}
+                key={`${stock.symbol || stock.ticker}-${index}`}
                 className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
                 onClick={() => handleSelect(stock)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="stock-result-info">
                   <span className="stock-result-name">{stock.name}</span>
-                  <span className="stock-result-ticker">{stock.ticker}</span>
+                  <span className="stock-result-ticker">
+                    {stock.symbol || stock.ticker}
+                    {stock.exchange && (
+                      <span className="exchange-tag">({stock.exchange})</span>
+                    )}
+                  </span>
                 </div>
-                <span className="stock-result-sector">{stock.sector}</span>
+                <div className="stock-result-details">
+                  {stock.sector && (
+                    <span className="stock-result-sector">{stock.sector}</span>
+                  )}
+                  {stock.current_price && (
+                    <span className="stock-result-price">₹{stock.current_price}</span>
+                  )}
+                </div>
               </div>
             ))
-          ) : (
+          ) : query.length >= 1 ? (
             <div className="search-empty">
-              No stocks found for "{query}"
+              <div>No stocks found for "{query}"</div>
+              <div className="search-tip">Try searching by company name or stock symbol</div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>

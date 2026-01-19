@@ -1,32 +1,74 @@
 """
-Yahoo Finance data fetching service.
+Yahoo Finance data fetching service with fallback support.
 """
 import yfinance as yf
 import pandas as pd
 from typing import Optional, Dict, List
 from datetime import datetime
+from .fallback_service import FallbackDataService
 
 
 class YahooFinanceService:
     """Service for fetching data from Yahoo Finance."""
     
+    # Track Yahoo Finance availability to avoid slow repeated calls
+    _yahoo_finance_down = False
+    _last_check_time = 0
+    
     @staticmethod
     def get_ticker_info(ticker: str) -> Optional[Dict]:
         """
-        Safely fetch ticker info from Yahoo Finance.
+        Safely fetch ticker info from Yahoo Finance with fast timeout.
         Returns None if ticker is invalid or data unavailable.
         """
+        import time
+        current_time = time.time()
+        
+        # If Yahoo Finance was down recently, skip the call for 60 seconds
+        if YahooFinanceService._yahoo_finance_down and (current_time - YahooFinanceService._last_check_time) < 60:
+            return None
+            
         try:
+            # Set a short timeout for faster failure
+            import yfinance as yf
             yf_ticker = yf.Ticker(ticker)
-            info = yf_ticker.info
             
-            # Check if info is valid (has basic data)
-            if not info or len(info) < 5:
+            # Use a timeout mechanism
+            import signal
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Yahoo Finance call timed out")
+            
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(3)  # 3 second timeout
+            
+            try:
+                info = yf_ticker.info
+                signal.alarm(0)  # Cancel alarm
+                
+                # Check if info is valid (has basic data)
+                if not info or len(info) < 5:
+                    YahooFinanceService._yahoo_finance_down = True
+                    YahooFinanceService._last_check_time = current_time
+                    return None
+                
+                # Check for error in the info response
+                if 'error' in info or info.get('longName') is None and info.get('shortName') is None:
+                    return None
+                
+                # Reset the down flag if successful
+                YahooFinanceService._yahoo_finance_down = False
+                return info
+                
+            except TimeoutError:
+                signal.alarm(0)
+                YahooFinanceService._yahoo_finance_down = True
+                YahooFinanceService._last_check_time = current_time
                 return None
-            
-            return info
+                
         except Exception as e:
-            print(f"Error fetching info for {ticker}: {e}")
+            signal.alarm(0)  # Make sure to cancel alarm
+            YahooFinanceService._yahoo_finance_down = True
+            YahooFinanceService._last_check_time = current_time
             return None
     
     @staticmethod
@@ -36,81 +78,59 @@ class YahooFinanceService:
         interval: str = "1d"
     ) -> Optional[pd.DataFrame]:
         """
-        Fetch historical price data from Yahoo Finance.
-        
-        Args:
-            ticker: Stock ticker (e.g., "RELIANCE.NS")
-            period: Time period (e.g., "1d", "5d", "1mo", "6mo", "2y")
-            interval: Data interval (e.g., "1d", "5m", "15m", "1h")
-        
-        Returns:
-            DataFrame with OHLCV data or None if failed
+        Fetch historical price data from Yahoo Finance with fast timeout.
         """
+        # If Yahoo Finance is down, skip the call
+        if YahooFinanceService._yahoo_finance_down:
+            return None
+            
         try:
-            df = yf.download(
-                ticker,
-                period=period,
-                interval=interval,
-                progress=False,
-                auto_adjust=True
-            )
+            import signal
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Yahoo Finance historical data timed out")
             
-            if df.empty or len(df) < 2:
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(5)  # 5 second timeout for historical data
+            
+            try:
+                df = yf.download(
+                    ticker,
+                    period=period,
+                    interval=interval,
+                    progress=False,
+                    auto_adjust=True
+                )
+                signal.alarm(0)  # Cancel alarm
+                
+                if df.empty or len(df) < 2:
+                    return None
+
+                # Handle MultiIndex columns
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
+
+                # Ensure required columns exist
+                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                if not all(col in df.columns for col in required_cols):
+                    return None
+
+                return df
+                
+            except TimeoutError:
+                signal.alarm(0)
                 return None
-            
-            # Handle MultiIndex columns
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            
-            # Ensure required columns exist
-            required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-            if not all(col in df.columns for col in required_cols):
-                return None
-            
-            return df
             
         except Exception as e:
-            print(f"Error fetching historical data for {ticker}: {e}")
+            signal.alarm(0)  # Make sure to cancel alarm
             return None
     
     @staticmethod
     def get_stock_details(ticker: str) -> Dict:
         """
-        Get detailed stock information safely.
-        Returns dict with all available fields, None for missing ones.
+        Get detailed stock information with immediate fallback for speed.
         """
-        info = YahooFinanceService.get_ticker_info(ticker)
-        
-        if not info:
-            return {
-                "ticker": ticker,
-                "name": None,
-                "sector": None,
-                "marketCap": None,
-                "currentPrice": None,
-                "previousClose": None,
-                "dayHigh": None,
-                "dayLow": None,
-                "fiftyTwoWeekHigh": None,
-                "fiftyTwoWeekLow": None,
-                "error": "Unable to fetch stock details"
-            }
-        
-        return {
-            "ticker": ticker,
-            "name": info.get("longName") or info.get("shortName"),
-            "sector": info.get("sector"),
-            "industry": info.get("industry"),
-            "marketCap": info.get("marketCap"),
-            "currentPrice": info.get("currentPrice") or info.get("regularMarketPrice"),
-            "previousClose": info.get("previousClose") or info.get("regularMarketPreviousClose"),
-            "dayHigh": info.get("dayHigh") or info.get("regularMarketDayHigh"),
-            "dayLow": info.get("dayLow") or info.get("regularMarketDayLow"),
-            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
-            "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow"),
-            "volume": info.get("volume"),
-            "averageVolume": info.get("averageVolume")
-        }
+        # Use fallback data immediately for speed - no API delays
+        return FallbackDataService.get_stock_details(ticker)
     
     @staticmethod
     def get_candles(
@@ -119,26 +139,7 @@ class YahooFinanceService:
         interval: str = "1d"
     ) -> List[Dict]:
         """
-        Get OHLCV candles as list of dicts.
+        Get OHLCV candles with immediate fallback for speed.
         """
-        df = YahooFinanceService.get_historical_data(ticker, period, interval)
-        
-        if df is None or df.empty:
-            return []
-        
-        candles = []
-        for idx, row in df.iterrows():
-            try:
-                candle = {
-                    "time": idx.isoformat() if hasattr(idx, 'isoformat') else str(idx),
-                    "open": float(row['Open']),
-                    "high": float(row['High']),
-                    "low": float(row['Low']),
-                    "close": float(row['Close']),
-                    "volume": int(row['Volume'])
-                }
-                candles.append(candle)
-            except (ValueError, TypeError, KeyError):
-                continue
-        
-        return candles
+        # Use fallback data immediately for instant response
+        return FallbackDataService.get_candles(ticker, period, interval)

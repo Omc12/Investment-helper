@@ -13,25 +13,94 @@ stock_service = StockService(STOCKS_JSON_PATH)
 
 
 @router.get("/stocks")
-def get_all_stocks():
-    """Get list of all available stocks."""
+def get_all_stocks(limit: Optional[int] = Query(None, description="Limit number of stocks returned")):
+    """Get list of all available stocks with optional limit."""
     stocks = stock_service.load_stocks()
+    
+    if limit:
+        stocks = stocks[:limit]
+    
     return {
         "count": len(stocks),
-        "stocks": stocks
+        "total_available": len(stock_service.load_stocks()),
+        "stocks": stocks,
+        "last_updated": stock_service._last_fetch.isoformat() if stock_service._last_fetch else None
     }
 
 
 @router.get("/stocks/search")
 def search_stocks(q: Optional[str] = Query(None, description="Search query")):
-    """Search for stocks by ticker or name."""
+    """Search for stocks dynamically across NSE and BSE."""
     if not q or q.strip() == "":
-        # Return top 10 popular stocks
+        # Return top 20 popular stocks (by market cap)
         stocks = stock_service.load_stocks()
-        return {"results": stocks[:10]}
+        return {"results": stocks[:20]}
     
-    results = stock_service.search_stocks(q, limit=10)
-    return {"results": results}
+    # Use dynamic search that queries APIs in real-time
+    results = stock_service.search_stocks_dynamic(q, limit=20)
+    
+    # If no results from dynamic search, try direct API search across exchanges
+    if not results:
+        results = stock_service.search_indian_exchanges(q)
+    
+    return {
+        "results": results,
+        "query": q.strip(),
+        "total_found": len(results),
+        "is_dynamic_search": True
+    }
+
+
+@router.get("/stocks/lookup")
+def lookup_stock(
+    ticker: Optional[str] = Query(None, description="Stock ticker symbol"),
+    exchange: Optional[str] = Query(None, description="Exchange suffix (.NS, .BO)")
+):
+    """
+    Real-time stock lookup across Indian exchanges.
+    Tries to find any stock by ticker, even if not in cached database.
+    """
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker is required")
+    
+    ticker = ticker.strip().upper()
+    
+    # If exchange is specified, try that first
+    if exchange:
+        full_ticker = f"{ticker}{exchange}"
+        stock_info = stock_service._get_stock_info_from_api(full_ticker)
+        if stock_info:
+            return {"stock": stock_info, "found": True}
+    
+    # Try all Indian exchanges
+    results = stock_service.search_indian_exchanges(ticker)
+    
+    if results:
+        return {
+            "stock": results[0],  # Return first match
+            "all_matches": results,
+            "found": True,
+            "total_matches": len(results)
+        }
+    
+    raise HTTPException(
+        status_code=404, 
+        detail=f"Stock with ticker '{ticker}' not found on NSE or BSE"
+    )
+
+
+@router.post("/stocks/refresh")
+def force_refresh_stocks():
+    """Admin endpoint to force refresh stock list from APIs."""
+    try:
+        refreshed_stocks = stock_service.force_refresh_stocks()
+        return {
+            "success": True,
+            "message": f"Successfully refreshed {len(refreshed_stocks)} stocks",
+            "count": len(refreshed_stocks)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error refreshing stocks: {str(e)}")
 
 
 @router.get("/stocks/details")

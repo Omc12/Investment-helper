@@ -353,6 +353,57 @@ body {
   color: var(--text-muted);
 }
 
+.search-empty .search-tip {
+  font-size: 0.85rem;
+  color: var(--text-dimmed);
+  margin-top: 8px;
+}
+
+/* Loading state for search */
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced stock result details */
+.stock-result-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.stock-result-price {
+  font-size: 0.85rem;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.exchange-tag {
+  font-size: 0.7rem;
+  color: var(--text-dimmed);
+  margin-left: 6px;
+}
+
 /* ============================================
    MARKET OVERVIEW SECTION
    ============================================ */
