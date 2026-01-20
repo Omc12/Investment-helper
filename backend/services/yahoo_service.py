@@ -78,59 +78,97 @@ class YahooFinanceService:
         interval: str = "1d"
     ) -> Optional[pd.DataFrame]:
         """
-        Fetch historical price data from Yahoo Finance with fast timeout.
+        Fetch historical price data from Yahoo Finance using Ticker object.
         """
         # If Yahoo Finance is down, skip the call
         if YahooFinanceService._yahoo_finance_down:
             return None
             
         try:
-            import signal
-            def timeout_handler(signum, frame):
-                raise TimeoutError("Yahoo Finance historical data timed out")
+            # Use Ticker object which is more reliable than download()
+            stock = yf.Ticker(ticker)
+            df = stock.history(period=period, interval=interval, auto_adjust=True)
             
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(5)  # 5 second timeout for historical data
-            
-            try:
-                df = yf.download(
-                    ticker,
-                    period=period,
-                    interval=interval,
-                    progress=False,
-                    auto_adjust=True
-                )
-                signal.alarm(0)  # Cancel alarm
-                
-                if df.empty or len(df) < 2:
-                    return None
-
-                # Handle MultiIndex columns
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-
-                # Ensure required columns exist
-                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-                if not all(col in df.columns for col in required_cols):
-                    return None
-
-                return df
-                
-            except TimeoutError:
-                signal.alarm(0)
+            if df is None or df.empty or len(df) < 2:
+                print(f"[DEBUG] No historical data for {ticker}")
                 return None
+
+            # Ensure required columns exist
+            required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+            if not all(col in df.columns for col in required_cols):
+                print(f"[DEBUG] Missing required columns for {ticker}. Got: {df.columns.tolist()}")
+                return None
+
+            print(f"[DEBUG] Successfully fetched {len(df)} rows for {ticker}")
+            return df
             
         except Exception as e:
-            signal.alarm(0)  # Make sure to cancel alarm
+            print(f"[ERROR] Failed to fetch historical data for {ticker}: {str(e)}")
             return None
     
     @staticmethod
     def get_stock_details(ticker: str) -> Dict:
         """
-        Get detailed stock information with immediate fallback for speed.
+        Get detailed stock information from Yahoo Finance with real-time data.
+        Falls back to cached data only if API fails.
         """
-        # Use fallback data immediately for speed - no API delays
-        return FallbackDataService.get_stock_details(ticker)
+        try:
+            # Try to get real-time data from Yahoo Finance first
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            
+            # Validate that we got real data
+            if not info or 'regularMarketPrice' not in info:
+                print(f"[WARNING] Yahoo Finance returned incomplete data for {ticker}, using fallback")
+                return FallbackDataService.get_stock_details(ticker)
+            
+            # Extract relevant fields with proper fallbacks
+            result = {
+                "ticker": ticker,
+                "longName": info.get("longName", info.get("shortName", ticker)),
+                "shortName": info.get("shortName", ticker),
+                "sector": info.get("sector", "N/A"),
+                "industry": info.get("industry", "N/A"),
+                
+                # Current price data
+                "currentPrice": info.get("regularMarketPrice", info.get("currentPrice", 0)),
+                "previousClose": info.get("regularMarketPreviousClose", info.get("previousClose", 0)),
+                
+                # Day trading range
+                "dayHigh": info.get("regularMarketDayHigh", info.get("dayHigh", 0)),
+                "dayLow": info.get("regularMarketDayLow", info.get("dayLow", 0)),
+                "open": info.get("regularMarketOpen", info.get("open", 0)),
+                
+                # 52-week range
+                "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh", 0),
+                "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow", 0),
+                
+                # Volume and market cap
+                "volume": info.get("regularMarketVolume", info.get("volume", 0)),
+                "averageVolume": info.get("averageVolume", 0),
+                "marketCap": info.get("marketCap", 0),
+                
+                # Valuation metrics
+                "trailingPE": info.get("trailingPE", 0),
+                "forwardPE": info.get("forwardPE", 0),
+                "dividendYield": info.get("dividendYield", 0),
+                "bookValue": info.get("bookValue", 0),
+                
+                # Additional info
+                "currency": info.get("currency", "INR"),
+                "exchange": info.get("exchange", "NSI"),
+                "quoteType": info.get("quoteType", "EQUITY"),
+                
+                # Timestamp
+                "lastUpdated": datetime.now().isoformat()
+            }
+            
+            return result
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch details for {ticker}: {str(e)}")
+            # Fallback to cached/mock data
+            return FallbackDataService.get_stock_details(ticker)
     
     @staticmethod
     def get_candles(
@@ -139,7 +177,33 @@ class YahooFinanceService:
         interval: str = "1d"
     ) -> List[Dict]:
         """
-        Get OHLCV candles with immediate fallback for speed.
+        Get OHLCV candles from Yahoo Finance with real-time data.
+        Falls back to cached data only if API fails.
         """
-        # Use fallback data immediately for instant response
-        return FallbackDataService.get_candles(ticker, period, interval)
+        try:
+            # Try to get real historical data
+            df = YahooFinanceService.get_historical_data(ticker, period, interval)
+            
+            if df is None or df.empty:
+                print(f"[WARNING] Yahoo Finance returned no data for {ticker}, using fallback")
+                return FallbackDataService.get_candles(ticker, period, interval)
+            
+            # Convert DataFrame to list of candle dictionaries
+            candles = []
+            for date, row in df.iterrows():
+                candles.append({
+                    "date": date.strftime("%Y-%m-%d"),
+                    "timestamp": int(date.timestamp()),
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": int(row["Volume"]) if not pd.isna(row["Volume"]) else 0
+                })
+            
+            return candles
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch candles for {ticker}: {str(e)}")
+            # Fallback to cached/mock data
+            return FallbackDataService.get_candles(ticker, period, interval)
