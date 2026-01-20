@@ -1,16 +1,29 @@
+import { motion } from 'framer-motion';
+import { TrendingUp, RefreshCw } from 'lucide-react';
 import SearchBox from './SearchBox';
 
 /**
- * Navbar - Sticky top navigation with Groww-style design
+ * Navbar - Sticky top navigation with modern design and animations
  */
 const Navbar = ({ onSelectStock, onRefresh, refreshing }) => {
   return (
-    <nav className="navbar">
+    <motion.nav 
+      className="navbar"
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="navbar-content">
-        <div className="navbar-brand" onClick={() => window.location.reload()}>
+        <motion.div 
+          className="navbar-brand" 
+          onClick={() => window.location.reload()}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <TrendingUp size={24} className="navbar-icon" />
           <span className="navbar-logo">StockAI</span>
           <span className="navbar-tagline">AI-Powered Indian Stocks</span>
-        </div>
+        </motion.div>
 
         <div className="navbar-search">
           <SearchBox 
@@ -20,16 +33,21 @@ const Navbar = ({ onSelectStock, onRefresh, refreshing }) => {
         </div>
 
         <div className="navbar-actions">
-          <button 
+          <motion.button 
             className={`navbar-btn ${refreshing ? 'refreshing' : ''}`}
             onClick={onRefresh}
             title="Refresh data"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            🔄
-          </button>
+            <RefreshCw 
+              size={18} 
+              className={refreshing ? 'spinning' : ''}
+            />
+          </motion.button>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 };
 

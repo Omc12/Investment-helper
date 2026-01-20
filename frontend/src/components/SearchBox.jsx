@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, X, TrendingUp } from 'lucide-react';
 
 /**
- * SearchBox - Groww-style dark mode autocomplete search
+ * SearchBox - Modern autocomplete search with animations
  */
 const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
   const [query, setQuery] = useState('');
@@ -127,7 +129,7 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
   return (
     <div className="search-box">
       <div className="search-input-wrapper">
-        <span className="search-icon">🔍</span>
+        <Search size={18} className="search-icon" />
         <input
           ref={inputRef}
           type="text"
@@ -140,14 +142,27 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
         />
         {loading && <div className="search-spinner" />}
         {!loading && query && (
-          <button className="search-clear" onClick={clearSearch}>
-            ✕
-          </button>
+          <motion.button 
+            className="search-clear" 
+            onClick={clearSearch}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <X size={16} />
+          </motion.button>
         )}
       </div>
 
-      {showDropdown && (
-        <div className="search-dropdown" ref={dropdownRef}>
+      <AnimatePresence>
+        {showDropdown && (
+          <motion.div 
+            className="search-dropdown" 
+            ref={dropdownRef}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
           {loading ? (
             <div className="search-loading">
               <div className="loading-spinner"></div>
@@ -155,11 +170,15 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
             </div>
           ) : results.length > 0 ? (
             results.map((stock, index) => (
-              <div
+              <motion.div
                 key={`${stock.symbol || stock.ticker}-${index}`}
                 className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
                 onClick={() => handleSelect(stock)}
                 onMouseEnter={() => setSelectedIndex(index)}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ backgroundColor: 'rgba(99, 102, 241, 0.1)' }}
               >
                 <div className="stock-result-info">
                   <span className="stock-result-name">{stock.name}</span>
@@ -178,7 +197,7 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
                     <span className="stock-result-price">₹{stock.current_price}</span>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))
           ) : query.length >= 1 ? (
             <div className="search-empty">
@@ -186,8 +205,9 @@ const SearchBox = ({ onSelectStock, placeholder = "Search stocks..." }) => {
               <div className="search-tip">Try searching by company name or stock symbol</div>
             </div>
           ) : null}
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
