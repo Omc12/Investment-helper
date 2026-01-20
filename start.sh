@@ -1,27 +1,27 @@
 #!/bin/bash
 
-echo "🚀 Starting Indian Stock Predictor AI..."
-echo "========================================"
+echo "🚀 Starting Investment Helper..."
+echo "================================"
 echo ""
 
 # Check if backend dependencies are installed
-if [ ! -d "stock-ai/backend/venv" ]; then
+if [ ! -d "backend/venv" ]; then
     echo "📦 Setting up backend virtual environment..."
-    cd stock-ai/backend
+    cd backend
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
-    cd ../..
+    cd ..
 else
     echo "✅ Backend virtual environment exists"
 fi
 
 # Check if frontend dependencies are installed
-if [ ! -d "stock-ai/frontend/node_modules" ]; then
+if [ ! -d "frontend/node_modules" ]; then
     echo "📦 Installing frontend dependencies..."
-    cd stock-ai/frontend
+    cd frontend
     npm install
-    cd ../..
+    cd ..
 else
     echo "✅ Frontend dependencies installed"
 fi
@@ -32,21 +32,21 @@ echo ""
 
 # Start backend in background
 echo "🔧 Starting Backend (FastAPI) on http://localhost:8000"
-cd stock-ai/backend
+cd backend
 source venv/bin/activate
 python3 main.py &
 BACKEND_PID=$!
-cd ../..
+cd ..
 
 # Wait for backend to start
 sleep 3
 
 # Start frontend
-echo "🎨 Starting Frontend (React) on http://localhost:5173"
-cd stock-ai/frontend
+echo "🎨 Starting Frontend (React) on http://localhost:5174"
+cd frontend
 npm run dev &
 FRONTEND_PID=$!
-cd ../..
+cd ..
 
 echo ""
 echo "========================================"

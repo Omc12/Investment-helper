@@ -1,10 +1,10 @@
 #!/bin/bash
 
-echo "🎨 Setting up Indian Stock Predictor AI Frontend"
-echo "=============================================="
+echo "🎨 Setting up Frontend"
+echo "====================="
 echo ""
 
-cd "$(dirname "$0")/stock-ai/frontend"
+cd "$(dirname "$0")/frontend"
 
 # Check Node version
 if command -v node &> /dev/null; then

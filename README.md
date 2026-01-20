@@ -1,99 +1,117 @@
-# 🇮🇳 Indian Stock Predictor AI - Production Edition
+# 🇮🇳 Investment Helper - Stock Predictor AI
 
-A production-grade full-stack application for predicting Indian stock movements using machine learning. Features clean architecture, caching, walk-forward validation, and 25+ engineered features.
+A full-stack application for searching and analyzing Indian stocks with AI-powered predictions. Features on-demand data fetching, multi-provider API system, and machine learning predictions.
 
 ## 🎯 Key Features
 
+### Search-Only Architecture
+- ✅ **No Default Stock Lists**: Homepage is empty until you search
+- ✅ **On-Demand Fetching**: Stocks fetched only when searched
+- ✅ **Multi-Provider System**: Automatic fallback across 5 API providers
+- ✅ **Fresh Data Always**: No stale cache - always latest data
+- ✅ **Fast Search**: Intelligent caching with fresh API queries
+
 ### Backend (FastAPI)
-- ✅ **Clean Architecture**: Modular structure with separation of concerns (core/, services/, routes/)
-- ✅ **Intelligent Caching**: Multi-level TTL cache (5min - 1hr) for optimal performance
-- ✅ **Walk-Forward Validation**: 3-fold time-series cross-validation (60-80%, 70-90%, 80-100%)
-- ✅ **25+ ML Features**: RSI, MACD, Bollinger Bands, EMA, Stochastic, ATR, Volume ratios, and more
-- ✅ **200+ NSE Stocks**: Comprehensive coverage of NIFTY 50 + popular mid/small caps
-- ✅ **Free Data Only**: Uses Yahoo Finance via yfinance (no paid APIs)
+- ✅ **Clean Architecture**: Modular structure (core/, services/, routes/)
+- ✅ **Multi-Provider APIs**: YFinance, Finnhub, Alpha Vantage, Yahoo Finance
+- ✅ **ML Features**: 25+ technical indicators (RSI, MACD, Bollinger Bands, etc.)
+- ✅ **Walk-Forward Validation**: Time-series cross-validation
+- ✅ **On-Demand Data**: Fetch only what's searched
 
 ### Frontend (React + Vite)
-- ✅ **Component-Based**: SearchBox, StockCard, PriceChart, PredictionPanel
-- ✅ **Autocomplete Search**: Fast debounced search with keyboard navigation
-- ✅ **Interactive Charts**: Multi-timeframe price & volume charts with Chart.js
-- ✅ **Live Stock Details**: Market cap, P/E ratio, 52-week high/low, volume
-- ✅ **ML Predictions**: Buy/Sell/Hold signals with confidence scores
+- ✅ **Search-First UI**: Clean empty state until search
+- ✅ **Autocomplete Search**: Fast debounced search
+- ✅ **Interactive Charts**: Multi-timeframe price & volume charts
+- ✅ **Live Stock Details**: Market cap, P/E ratio, 52-week high/low
+- ✅ **ML Predictions**: Buy/Sell/Hold signals with confidence
 
 ### ML Model
-- **Algorithm**: HistGradientBoostingClassifier (fast & accurate)
+- **Algorithm**: HistGradientBoostingClassifier
 - **Features**: 25+ technical indicators
 - **Validation**: Walk-forward time-series validation
-- **Target**: Next-day price movement (Up/Down)
-- **Caching**: Model predictions cached for 10 minutes
+- **Target**: Next-day price movement prediction
 
 ## 📁 Project Structure
 
 ```
-stock-ai/
+Investment helper/
 ├── backend/
 │   ├── core/
-│   │   ├── __init__.py
-│   │   ├── config.py          # Configuration (API, CORS, cache TTLs)
-│   │   └── cache.py           # Caching utilities & decorators
+│   │   ├── config.py          # Configuration & API settings
+│   │   └── cache.py           # Caching utilities
 │   ├── services/
-│   │   ├── __init__.py
+│   │   ├── data_providers/    # API provider implementations
+│   │   ├── multi_provider_fetcher.py  # Multi-provider coordination
 │   │   ├── yahoo_service.py   # Yahoo Finance wrapper
-│   │   ├── stock_service.py   # Stock list management
-│   │   ├── features.py        # Feature engineering (25+ features)
-│   │   └── model_service.py   # ML model training & prediction
+│   │   ├── stock_service.py   # Stock search & management
+│   │   ├── features.py        # Feature engineering
+│   │   └── model_service.py   # ML model & predictions
 │   ├── routes/
-│   │   ├── __init__.py
-│   │   ├── health.py          # Health check + cache info
+│   │   ├── health.py          # Health check
 │   │   ├── stocks.py          # Stock endpoints
 │   │   └── predict.py         # Prediction endpoint
 │   ├── data/
-│   │   └── stocks_nse.json    # 200+ NSE stocks database
-│   ├── main.py                # FastAPI app initialization
+│   │   └── stocks_nse.json    # Local stock cache
+│   ├── .env                   # API keys (Finnhub, etc.)
+│   ├── main.py                # FastAPI app
 │   └── requirements.txt       # Python dependencies
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── SearchBox.jsx       # Autocomplete search
-│   │   │   ├── StockCard.jsx       # Stock details display
-│   │   │   ├── PriceChart.jsx      # Interactive chart
-│   │   │   └── PredictionPanel.jsx # ML predictions
+│   │   │   ├── StockDetailView.jsx # Stock details display
+│   │   │   ├── PriceChart.jsx      # Interactive charts
+│   │   │   ├── PredictionPanel.jsx # ML predictions
+│   │   │   └── Navbar.jsx          # Navigation bar
 │   │   ├── App.jsx            # Main application
 │   │   ├── api.js             # API client functions
 │   │   └── styles.css         # Complete styling
 │   └── package.json           # Node dependencies
-└── README.md                  # This file
+├── start.sh                   # Start both services
+├── setup-backend.sh           # Backend setup script
+└── setup-frontend.sh          # Frontend setup script
 ```
 
 ## 🚀 Quick Start
 
-### 1. Backend Setup
+### Option 1: Use Start Script (Recommended)
 
 ```bash
-cd stock-ai/backend
+cd "Investment helper"
+chmod +x start.sh
+./start.sh
+```
 
-# Create virtual environment (recommended)
+This will:
+- Set up virtual environment if needed
+- Install dependencies
+- Start backend on http://localhost:8000
+- Start frontend on http://localhost:5174
+
+### Option 2: Manual Setup
+
+#### 1. Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate  # On Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Run the server
 python3 main.py
-# or
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Backend will run at: **http://localhost:8000**
+Backend runs at: **http://localhost:8000**
 
-API Docs (Swagger): **http://localhost:8000/docs**
-
-### 2. Frontend Setup
+#### 2. Frontend Setup
 
 ```bash
-cd stock-ai/frontend
+cd frontend
 
 # Install dependencies
 npm install
@@ -102,25 +120,44 @@ npm install
 npm run dev
 ```
 
-Frontend will run at: **http://localhost:5173**
+Frontend runs at: **http://localhost:5174**
 
 ## 📊 API Endpoints
 
 ### Health & Monitoring
 - `GET /health` - Health check
-- `GET /health/cache` - Cache statistics
 
 ### Stock Data
-- `GET /stocks` - Get all available stocks (200+)
-- `GET /stocks/search?query={text}` - Search stocks (autocomplete)
-- `GET /stocks/details?ticker={ticker}` - Get stock details (cached 5min)
-- `GET /stocks/candles?ticker={ticker}&period={period}` - Get OHLCV data (cached)
+- `GET /stocks?search={query}` - Search stocks (on-demand from APIs)
+- `GET /stocks/search?q={query}` - Alternative search endpoint
+- `GET /stocks/details?ticker={ticker}` - Get stock details (fresh data)
+- `GET /stocks/candles?ticker={ticker}&period={period}` - Get OHLCV data (fresh data)
+- `GET /stocks/lookup?ticker={ticker}` - Direct ticker lookup
 
 ### Predictions
-- `GET /predict?ticker={ticker}` - Get ML prediction (cached 10min)
+- `GET /predict?ticker={ticker}` - Get ML prediction
 
 ### Supported Periods for Candles
 - `1d`, `5d`, `1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `max`
+
+## 🔑 API Configuration
+
+Create a `.env` file in the `backend/` directory:
+
+```env
+FINNHUB_API_KEY=your_finnhub_key_here
+ALPHA_VANTAGE_API_KEY=demo
+```
+
+### Multi-Provider System
+
+The app uses multiple API providers with automatic fallback:
+
+1. **Local Database** - Cached results (Priority 1)
+2. **YFinance Direct** - Primary data source (Priority 5)
+3. **Alpha Vantage** - Additional source (Priority 10)
+4. **Finnhub** - Your API key (Priority 15)
+5. **Yahoo Finance** - Fallback (Priority 20)
 
 ## 🧠 ML Features (25+)
 

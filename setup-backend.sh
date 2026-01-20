@@ -1,10 +1,10 @@
 #!/bin/bash
 
-echo "🔧 Setting up Indian Stock Predictor AI Backend"
-echo "=============================================="
+echo "🔧 Setting up Backend"
+echo "===================="
 echo ""
 
-cd "$(dirname "$0")/stock-ai/backend"
+cd "$(dirname "$0")/backend"
 
 # Check Python version
 echo "Checking Python version..."
