@@ -4,9 +4,8 @@ Minimal FastAPI application focused on ML predictions.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from core.config import API_TITLE, API_VERSION, CORS_ORIGINS
+from core.config import API_TITLE, API_VERSION
 from routes import predict, stocks
-import re
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -15,27 +14,11 @@ app = FastAPI(
     description="AI-powered stock prediction API"
 )
 
-# Custom CORS middleware to handle Vercel wildcard domains
-@app.middleware("http")
-async def cors_middleware(request, call_next):
-    origin = request.headers.get("origin")
-    response = await call_next(request)
-    
-    # Allow specific origins or any *.vercel.app domain
-    if origin:
-        if origin in CORS_ORIGINS or (origin.endswith(".vercel.app") and origin.startswith("https://")):
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-    
-    return response
-
-# Configure CORS for preflight requests
+# Configure CORS - Allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS + ["https://signalist-stock-ai.vercel.app"],  # Add your production URL explicitly
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=False,  # Must be False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
