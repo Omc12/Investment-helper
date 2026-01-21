@@ -6,7 +6,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import API_TITLE, API_VERSION, CORS_ORIGINS
 from routes import health, stocks, predict, providers
-from services.price_updater import PriceUpdater
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -33,37 +32,8 @@ app.include_router(providers.router, prefix="/api", tags=["providers"])
 
 @app.on_event("startup")
 async def startup_event():
-    """Load cached prices on startup."""
-    PriceUpdater.load_prices()
-    print("Loaded cached prices on startup")
-
-
-@app.get("/prices/update")
-def update_prices():
-    """Manually trigger a price update from Yahoo Finance."""
-    try:
-        updated = PriceUpdater.fetch_and_update_all()
-        return {
-            "success": True,
-            "updated_count": updated,
-            "message": f"Updated {updated} stock prices from market"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-@app.get("/prices/status")
-def price_status():
-    """Get status of cached prices."""
-    prices = PriceUpdater._cached_prices
-    return {
-        "cached_tickers": len(prices),
-        "last_update": PriceUpdater._last_update.isoformat() if PriceUpdater._last_update else None,
-        "tickers": list(prices.keys())
-    }
+    """Startup event - ready for real-time data fetching."""
+    print("✓ Server ready - using real-time Yahoo Finance data (no cache)")
 
 
 if __name__ == "__main__":

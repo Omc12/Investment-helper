@@ -1,15 +1,14 @@
 """
-Yahoo Finance data fetching service with fallback support.
+Yahoo Finance data fetching service - Real-time data only.
 """
 import yfinance as yf
 import pandas as pd
 from typing import Optional, Dict, List
 from datetime import datetime
-from .fallback_service import FallbackDataService
 
 
 class YahooFinanceService:
-    """Service for fetching data from Yahoo Finance."""
+    """Service for fetching data from Yahoo Finance - always uses real-time data."""
     
     # Track Yahoo Finance availability to avoid slow repeated calls
     _yahoo_finance_down = False
@@ -110,17 +109,17 @@ class YahooFinanceService:
     def get_stock_details(ticker: str) -> Dict:
         """
         Get detailed stock information from Yahoo Finance with real-time data.
-        Falls back to cached data only if API fails.
+        No fallback - always uses live Yahoo Finance data.
         """
         try:
-            # Try to get real-time data from Yahoo Finance first
+            # Get real-time data from Yahoo Finance
             stock = yf.Ticker(ticker)
             info = stock.info
             
             # Validate that we got real data
             if not info or 'regularMarketPrice' not in info:
-                print(f"[WARNING] Yahoo Finance returned incomplete data for {ticker}, using fallback")
-                return FallbackDataService.get_stock_details(ticker)
+                print(f"[ERROR] Yahoo Finance returned incomplete data for {ticker}")
+                raise ValueError(f"No market data available for {ticker}")
             
             # Extract relevant fields with proper fallbacks
             result = {
@@ -167,8 +166,8 @@ class YahooFinanceService:
             
         except Exception as e:
             print(f"[ERROR] Failed to fetch details for {ticker}: {str(e)}")
-            # Fallback to cached/mock data
-            return FallbackDataService.get_stock_details(ticker)
+            # No fallback - raise error to show real data unavailable
+            raise ValueError(f"Unable to fetch real-time data for {ticker}: {str(e)}")
     
     @staticmethod
     def get_candles(
@@ -178,15 +177,15 @@ class YahooFinanceService:
     ) -> List[Dict]:
         """
         Get OHLCV candles from Yahoo Finance with real-time data.
-        Falls back to cached data only if API fails.
+        No fallback - always uses live data.
         """
         try:
-            # Try to get real historical data
+            # Get real historical data from Yahoo Finance
             df = YahooFinanceService.get_historical_data(ticker, period, interval)
             
             if df is None or df.empty:
-                print(f"[WARNING] Yahoo Finance returned no data for {ticker}, using fallback")
-                return FallbackDataService.get_candles(ticker, period, interval)
+                print(f"[ERROR] Yahoo Finance returned no data for {ticker}")
+                raise ValueError(f"No historical data available for {ticker}")
             
             # Convert DataFrame to list of candle dictionaries
             candles = []
@@ -205,5 +204,5 @@ class YahooFinanceService:
             
         except Exception as e:
             print(f"[ERROR] Failed to fetch candles for {ticker}: {str(e)}")
-            # Fallback to cached/mock data
-            return FallbackDataService.get_candles(ticker, period, interval)
+            # No fallback - raise error to show real data unavailable
+            raise ValueError(f"Unable to fetch candle data for {ticker}: {str(e)}")

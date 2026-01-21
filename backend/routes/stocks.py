@@ -1,10 +1,11 @@
 """
-Stock-related routes (list, search, details, candles).
+Stock-related routes (list, search, details, candles, signals).
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from services.stock_service import StockService
 from services.yahoo_service import YahooFinanceService
+from services.trading_signals import analyze_stock_signals
 from core.config import STOCKS_JSON_PATH, CACHE_STOCK_DETAILS, CACHE_CANDLES_DAILY, CACHE_CANDLES_INTRADAY
 from core.cache import stock_details_cache, candles_cache, cached
 
@@ -181,3 +182,43 @@ def get_stock_candles(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching candles: {str(e)}")
+
+
+@router.get("/stocks/signals")
+def get_trading_signals(
+    ticker: Optional[str] = Query(None, description="Stock ticker (e.g., RELIANCE, TCS)")
+):
+    """
+    Get AI-powered trading signals using Triple Barrier Labeling + Gradient Boosting.
+    
+    Features:
+    - VIX regime filtering (blocks signals during extreme volatility)
+    - Purged cross-validation (prevents data leakage)
+    - Realistic Indian market costs (0.3% STT + brokerage)
+    - 10-day swing trading horizon
+    - 3.5% target profit, 1.5% stop loss
+    """
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker is required")
+    
+    ticker = ticker.strip().upper()
+    
+    print(f"[SIGNALS] Analyzing {ticker} for trading signals...")
+    
+    try:
+        result = analyze_stock_signals(ticker)
+        
+        if not result.get("success", False):
+            raise HTTPException(
+                status_code=500, 
+                detail=result.get("error", "Unknown error during signal analysis")
+            )
+        
+        print(f"[OK] Signal analysis complete for {ticker}: {result['signal']}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Signal analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing signals: {str(e)}")

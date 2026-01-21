@@ -8,7 +8,7 @@ import time
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from core.cache import stock_list_cache, cached
-from .multi_provider_fetcher import MultiProviderStockFetcher
+from .simple_fetcher import SimpleStockFetcher
 
 
 class StockService:
@@ -16,8 +16,8 @@ class StockService:
     
     def __init__(self, stocks_json_path: str):
         self.stocks_json_path = stocks_json_path
-        # Removed bulk fetcher - using on-demand fetching only
-        self.multi_fetcher = MultiProviderStockFetcher(stocks_json_path)  # Initialize multi-provider with local DB path
+        # Using simplified fetcher instead of complex multi-provider
+        self.multi_fetcher = SimpleStockFetcher(stocks_json_path)  
         self._last_fetch = None
         self._force_refresh_hours = 24  # Refresh every 24 hours
         print("📊 Stock service initialized - On-demand fetching mode")

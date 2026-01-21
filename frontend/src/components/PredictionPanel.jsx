@@ -22,16 +22,17 @@ const PredictionPanel = ({ ticker, stockName }) => {
       if (!response.ok) throw new Error('Prediction failed');
       const data = await response.json();
       
-      // Handle prediction response properly
-      const predictionValue = data.prediction || data.direction || 'Unknown';
-      const confidence = data.confidence ? (data.confidence * 100).toFixed(1) : 'N/A';
+      // Handle advanced model response
+      const signal = data.signal || data.predicted_direction || 'WAIT';
+      const probability = data.probability_up || 0;
+      const confidence = data.confidence || 'LOW';
       
       setPrediction({
         ...data,
-        prediction: predictionValue,
+        signal: signal,
+        probability: probability,
         confidence: confidence,
-        price_target: data.price_target || data.target_price || null,
-        change_percent: data.change_percent || data.expected_change || null
+        displayConfidence: `${(probability * 100).toFixed(1)}%`
       });
     } catch (err) {
       setError(err.message);
@@ -42,9 +43,15 @@ const PredictionPanel = ({ ticker, stockName }) => {
   };
 
   const getSignalClass = (signal) => {
-    if (signal === 'BUY' || signal === 'UP') return 'up';
-    if (signal === 'SELL' || signal === 'DOWN') return 'down';
+    if (signal === 'BUY' || signal === 'UP' || signal === 'STRONG BUY') return 'up';
+    if (signal === 'SELL' || signal === 'DOWN' || signal === 'STRONG SELL') return 'down';
     return 'hold';
+  };
+
+  const getSignalEmoji = (signal) => {
+    if (signal === 'BUY' || signal === 'UP' || signal === 'STRONG BUY') return '🚀';
+    if (signal === 'SELL' || signal === 'DOWN' || signal === 'STRONG SELL') return '📉';
+    return '⏸️';
   };
 
   if (!ticker) {
@@ -105,48 +112,106 @@ const PredictionPanel = ({ ticker, stockName }) => {
           <div>
             <div className="prediction-main-result">
               <div className="prediction-signal">
-                <span className="signal-label">Direction</span>
-                <div className={`signal-badge ${getSignalClass(prediction.prediction || prediction.signal)}`}>
-                  {(prediction.prediction || prediction.signal) === 'BUY' || (prediction.prediction || prediction.signal) === 'UP' ? '↑ UP' : 
-                   (prediction.prediction || prediction.signal) === 'SELL' || (prediction.prediction || prediction.signal) === 'DOWN' ? '↓ DOWN' : 
-                   'HOLD'}
+                <span className="signal-label">AI Signal</span>
+                <div className={`signal-badge ${getSignalClass(prediction.signal)}`}>
+                  {getSignalEmoji(prediction.signal)} {prediction.signal}
                 </div>
               </div>
 
               <div className="prediction-probability">
-                <span className="probability-label">Confidence</span>
+                <span className="probability-label">Probability</span>
                 <div className="probability-value">
-                  {prediction.confidence && !isNaN(prediction.confidence) ? `${prediction.confidence}%` : 'N/A'}
+                  {prediction.displayConfidence || 'N/A'}
                 </div>
               </div>
 
-              {prediction.price_target && !isNaN(prediction.price_target) && (
-                <div className="prediction-confidence">
-                  <span className="signal-label">Price Target</span>
-                  <div className="confidence-badge">
-                    ₹{parseFloat(prediction.price_target).toFixed(2)}
-                  </div>
+              <div className="prediction-confidence">
+                <span className="signal-label">Confidence</span>
+                <div className={`confidence-badge ${prediction.confidence?.toLowerCase()}`}>
+                  {prediction.confidence}
                 </div>
-              )}
+              </div>
             </div>
 
-            {prediction.change_percent && !isNaN(prediction.change_percent) && (
+            {/* VIX Status */}
+            {prediction.vix && (
               <div className="prediction-metrics">
                 <div className="metric-item">
-                  <span className="metric-label">Expected Change</span>
-                  <span className="metric-value">
-                    {parseFloat(prediction.change_percent).toFixed(2)}%
+                  <span className="metric-label">VIX Status</span>
+                  <span className={`metric-value ${prediction.vix.status === 'SAFE' ? 'text-green' : 'text-red'}`}>
+                    {prediction.vix.status} ({prediction.vix.current})
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Algorithm</span>
+                  <span className="metric-value" style={{fontSize: '11px'}}>
+                    {prediction.algorithm || 'ML Model'}
                   </span>
                 </div>
               </div>
             )}
 
-            {prediction.accuracy && !isNaN(prediction.accuracy) && (
+            {/* Backtest Performance */}
+            {prediction.backtest && prediction.backtest.total_signals > 0 && (
               <div className="prediction-metrics">
                 <div className="metric-item">
-                  <span className="metric-label">Model Accuracy</span>
+                  <span className="metric-label">Win Rate</span>
+                  <span className="metric-value text-green">
+                    {(prediction.backtest.win_rate * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Avg Return</span>
+                  <span className={`metric-value ${prediction.backtest.avg_return > 0 ? 'text-green' : 'text-red'}`}>
+                    {(prediction.backtest.avg_return * 100).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Total Signals</span>
                   <span className="metric-value">
-                    {(parseFloat(prediction.accuracy) * 100).toFixed(1)}%
+                    {prediction.backtest.total_signals}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Technical Indicators */}
+            {prediction.technicals && (
+              <div className="prediction-metrics">
+                <div className="metric-item">
+                  <span className="metric-label">RSI</span>
+                  <span className={`metric-value ${prediction.technicals.rsi < 30 ? 'text-green' : prediction.technicals.rsi > 70 ? 'text-red' : ''}`}>
+                    {prediction.technicals.rsi}
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">MACD</span>
+                  <span className={`metric-value ${prediction.technicals.macd > 0 ? 'text-green' : 'text-red'}`}>
+                    {prediction.technicals.macd.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Trading Parameters */}
+            {prediction.trading_params && (
+              <div className="prediction-metrics" style={{borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '12px'}}>
+                <div className="metric-item">
+                  <span className="metric-label">Target Profit</span>
+                  <span className="metric-value text-green">
+                    {prediction.trading_params.target_profit}
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Stop Loss</span>
+                  <span className="metric-value text-red">
+                    {prediction.trading_params.stop_loss}
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Horizon</span>
+                  <span className="metric-value">
+                    {prediction.trading_params.horizon_days} days
                   </span>
                 </div>
               </div>

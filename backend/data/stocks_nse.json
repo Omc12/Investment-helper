@@ -2357,5 +2357,61 @@
     "sector": "Other",
     "market_cap": 0,
     "last_price": 0.0
+  },
+  {
+    "ticker": "T.BO",
+    "name": "T.BO",
+    "sector": "Other",
+    "market_cap": 0,
+    "last_price": 0.0
+  },
+  {
+    "ticker": "T",
+    "name": "AT&T Inc.",
+    "sector": "Communication",
+    "market_cap": 167962558464,
+    "last_price": 23.489999771118164
+  },
+  {
+    "ticker": "TA",
+    "name": "TA",
+    "sector": "Other",
+    "market_cap": 0,
+    "last_price": 0.0
+  },
+  {
+    "ticker": "OLA",
+    "name": "OLA",
+    "sector": "Other",
+    "market_cap": 0,
+    "last_price": 0.0
+  },
+  {
+    "ticker": "I.BO",
+    "name": "I.BO",
+    "sector": "Other",
+    "market_cap": 0,
+    "last_price": 0.0
+  },
+  {
+    "ticker": "I",
+    "name": "I",
+    "sector": "Other",
+    "market_cap": 0,
+    "last_price": 0.0
+  },
+  {
+    "ticker": "OLAELEC.NS",
+    "name": "OLA ELECTRIC MOBILITY LTD",
+    "sector": "Consumer Goods",
+    "market_cap": 136618704896,
+    "last_price": 32.560001373291016
+  },
+  {
+    "ticker": "OLAELEC.BO",
+    "name": "Ola Electric Mobility Limited",
+    "sector": "Consumer Goods",
+    "market_cap": 136775712768,
+    "last_price": 32.59000015258789
   }
 ]

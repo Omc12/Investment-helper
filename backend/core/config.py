@@ -38,26 +38,7 @@ CACHE_STOCK_LIST = 3600  # 1 hour
 # Data Settings
 STOCKS_JSON_PATH = "data/stocks_nse.json"
 
-# Model Settings
-MODEL_LOOKBACK_YEARS = 2
-MODEL_FEATURES = [
-    "Return1", "Return5", "Return10", "Return20", "LogReturn1",
-    "Volatility10", "Volatility20",
-    "SMA10", "SMA20", "SMA50",
-    "EMA10", "EMA20",
-    "RSI14",
-    "MACD", "MACD_Signal",
-    "Stochastic_K", "Stochastic_D",
-    "BB_Upper", "BB_Lower", "BB_Width",
-    "ATR14",
-    "HL_Range",
-    "Gap",
-    "Volume_Change",
-    "Volume_SMA20",
-    "Volume_Ratio"
-]
-
-# Confidence thresholds
+# Confidence thresholds (used by old system - kept for compatibility)
 CONFIDENCE_HIGH = 0.65
 CONFIDENCE_MEDIUM = 0.55
 

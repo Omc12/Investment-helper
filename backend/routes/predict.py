@@ -3,7 +3,7 @@ Prediction routes.
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
-from services.model_service import ModelService
+from services.trading_signals import analyze_stock_signals
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 def predict_stock(ticker: Optional[str] = Query(None, description="Stock ticker like RELIANCE.NS")):
     """
     Predict next-day direction for a stock.
-    Uses walk-forward validation and caching.
+    Uses pre-trained model for fast predictions.
     """
     if not ticker:
         raise HTTPException(status_code=400, detail="Ticker is required")
@@ -20,7 +20,7 @@ def predict_stock(ticker: Optional[str] = Query(None, description="Stock ticker 
     ticker = ticker.strip().upper()
     
     try:
-        prediction = ModelService.train_and_predict(ticker)
+        prediction = analyze_stock_signals(ticker)
         return prediction
     
     except ValueError as e:
