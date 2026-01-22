@@ -7,9 +7,45 @@ import pandas as pd
 import json
 import os
 import requests
+import time
 from typing import Optional
+from functools import lru_cache
+from datetime import datetime
 
 router = APIRouter()
+
+# Simple in-memory cache with TTL
+_stock_details_cache = {}
+_stock_candles_cache = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes cache
+
+
+def get_cached_stock_details(ticker: str):
+    """Get cached stock details if not expired"""
+    if ticker in _stock_details_cache:
+        data, timestamp = _stock_details_cache[ticker]
+        if time.time() - timestamp < CACHE_TTL_SECONDS:
+            return data
+    return None
+
+
+def set_cached_stock_details(ticker: str, data: dict):
+    """Cache stock details with timestamp"""
+    _stock_details_cache[ticker] = (data, time.time())
+
+
+def get_cached_candles(cache_key: str):
+    """Get cached candles if not expired"""
+    if cache_key in _stock_candles_cache:
+        data, timestamp = _stock_candles_cache[cache_key]
+        if time.time() - timestamp < CACHE_TTL_SECONDS:
+            return data
+    return None
+
+
+def set_cached_candles(cache_key: str, data: dict):
+    """Cache candles with timestamp"""
+    _stock_candles_cache[cache_key] = (data, time.time())
 
 # Load fallback stock database
 def load_stock_database():
@@ -178,9 +214,22 @@ def get_stock_details(ticker: str = Query(...)):
         if not ticker.endswith('.NS'):
             ticker = f"{ticker}.NS"
         
+        # Check cache first
+        cached = get_cached_stock_details(ticker)
+        if cached:
+            print(f"Returning cached details for {ticker}")
+            return cached
+        
+        # Add small delay to help with rate limiting
+        time.sleep(0.5)
+        
         # Get data from yfinance
         stock = yf.Ticker(ticker)
         info = stock.info
+        
+        # Check if we got valid data (rate limit returns empty or error)
+        if not info or len(info) < 5:
+            raise ValueError("Rate limited or invalid ticker")
         
         # Get latest intraday data (1-minute intervals for real-time price)
         hist_intraday = stock.history(period="1d", interval="1m")
@@ -394,10 +443,20 @@ def get_stock_details(ticker: str = Query(...)):
             "askSize": info.get("askSize"),
         }
         
+        # Cache the response before returning
+        set_cached_stock_details(ticker, response)
+        
         return response
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch stock details: {str(e)}")
+        # If rate limited, return a more helpful message with retry-after hint
+        error_msg = str(e)
+        if "Rate" in error_msg or "Too Many" in error_msg or "limited" in error_msg.lower():
+            raise HTTPException(
+                status_code=429, 
+                detail="Yahoo Finance rate limit reached. Please try again in a few minutes."
+            )
+        raise HTTPException(status_code=400, detail=f"Failed to fetch stock details: {error_msg}")
 
 
 @router.get("/stocks/candles") 
@@ -411,6 +470,16 @@ def get_stock_candles(
         # Clean ticker
         if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
             ticker = f"{ticker}.NS"
+        
+        # Check cache first
+        cache_key = f"{ticker}_{period}_{interval}"
+        cached = get_cached_candles(cache_key)
+        if cached:
+            print(f"Returning cached candles for {cache_key}")
+            return cached
+        
+        # Add small delay to help with rate limiting
+        time.sleep(0.3)
             
         stock = yf.Ticker(ticker)
         
@@ -464,12 +533,23 @@ def get_stock_candles(
         # Filter out any candles with None values
         candles = [c for c in candles if c["close"] is not None]
         
-        return {
+        response = {
             "candles": candles,
             "ticker": ticker,
             "interval": interval,
             "count": len(candles)
         }
         
+        # Cache the response
+        set_cached_candles(cache_key, response)
+        
+        return response
+        
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch candles: {str(e)}")
+        error_msg = str(e)
+        if "Rate" in error_msg or "Too Many" in error_msg or "limited" in error_msg.lower():
+            raise HTTPException(
+                status_code=429, 
+                detail="Yahoo Finance rate limit reached. Please try again in a few minutes."
+            )
+        raise HTTPException(status_code=400, detail=f"Failed to fetch candles: {error_msg}")
