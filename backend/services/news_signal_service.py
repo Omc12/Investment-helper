@@ -47,7 +47,9 @@ def get_news_signal_features(ticker: str, date: str) -> dict:
             "SBIN": "State Bank of India",
             "WIPRO": "Wipro"
         }
-        company = ticker_map.get(ticker, ticker)
+        # Strip suffix for mapping
+        clean_ticker = ticker.split('.')[0]
+        company = ticker_map.get(clean_ticker, clean_ticker)
         
         # Fetch news from Newsdata.io
         logger.debug(f"Fetching news for {ticker}...")

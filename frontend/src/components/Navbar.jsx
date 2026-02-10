@@ -1,32 +1,57 @@
-import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { TrendingUp, RefreshCw } from 'lucide-react';
 import SearchBox from './SearchBox';
 
-function Navbar({ onSelectStock }) {
+/**
+ * Navbar - Groww-inspired sticky navigation with premium dark theme
+ */
+const Navbar = ({ onSelectStock, onRefresh, refreshing }) => {
   return (
-    <nav className="navbar">
-      <div className="nav-inner">
-        <div className="brand-logo" onClick={() => window.location.reload()} style={{ cursor: 'pointer' }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="6" fill="#00D09C" />
-            <path d="M10 22L14 12L18 20L22 8" stroke="#121212" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Groww
+    <motion.nav 
+      className="navbar"
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div 
+        className="navbar-brand" 
+        onClick={() => window.location.reload()}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        style={{ cursor: 'pointer' }}
+      >
+        <div className="navbar-logo">
+          <TrendingUp size={20} />
         </div>
+        <span className="navbar-title">
+          Signal<span>ist</span>
+        </span>
+      </motion.div>
 
-        <div className="search-bar-container">
-          <SearchBox onSelectStock={onSelectStock} />
-        </div>
-
-        <div className="nav-actions">
-          <a href="#" style={{ fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>Explore</a>
-          <a href="#" style={{ fontSize: '15px', fontWeight: 500, color: 'var(--text-secondary)' }}>Investments</a>
-          <div className="nav-avatar">
-            OC
-          </div>
-        </div>
+      <div className="navbar-center">
+        <SearchBox 
+          onSelectStock={onSelectStock} 
+          placeholder="Search stocks... (e.g., Reliance, TCS, INFY)"
+        />
       </div>
-    </nav>
+
+      <div className="navbar-actions">
+        <motion.button 
+          className={`navbar-btn ${refreshing ? 'primary' : ''}`}
+          onClick={onRefresh}
+          title="Refresh market data"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <RefreshCw 
+            size={18} 
+            className={refreshing ? 'spinning' : ''}
+          />
+          <span>Refresh</span>
+        </motion.button>
+      </div>
+    </motion.nav>
   );
-}
+};
 
 export default Navbar;

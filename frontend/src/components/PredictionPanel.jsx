@@ -1,127 +1,258 @@
 import { useState } from 'react';
-import { Zap, Cpu, Target, Shield } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Cpu, TrendingUp, TrendingDown, Pause, AlertTriangle, Target, Shield } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-const ConfidenceGauge = ({ score }) => {
-  const radius = 30;
-  const stroke = 6;
-  const normalizedScore = Math.max(0, Math.min(100, score));
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - ((normalizedScore / 100) * circumference);
-
-  return (
-    <div className="gauge-container">
-      <svg width="80" height="80">
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="var(--bg-elevated)"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="var(--primary-green)"
-          strokeWidth={stroke}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform="rotate(-90 40 40)"
-        />
-      </svg>
-      <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{Math.round(normalizedScore)}%</span>
-      </div>
-    </div>
-  );
-};
-
+/**
+ * PredictionPanel - Groww-style ML prediction display
+ */
 const PredictionPanel = ({ ticker, stockName }) => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [ownsStock, setOwnsStock] = useState(false);
 
   const handlePredict = async () => {
-    setLoading(true);
-    // Simulating API call for now to ensure UI stability first
-    await new Promise(r => setTimeout(r, 1000));
+    if (!ticker) {
+      setError('Please select a stock first');
+      return;
+    }
 
-    setPrediction({
-      signal: 'BUY',
-      probability: 0.85,
-      action: 'Accumulate',
-      reason: 'Technical indicators (RSI, MACD) suggest bullish momentum with strong volume support.',
-      trading_params: {
-        target_profit: '2650.00',
-        stop_loss: '2420.00'
-      }
-    });
-    setLoading(false);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/predict?ticker=${ticker}&owns_stock=${ownsStock}`);
+      if (!response.ok) throw new Error('Prediction failed');
+      const data = await response.json();
+      
+      const signal = data.signal || data.predicted_direction || 'WAIT';
+      const probability = data.probability || data.probability_up || 0;
+      const confidence = data.confidence || 'LOW';
+      
+      setPrediction({
+        ...data,
+        signal: signal,
+        probability: probability,
+        confidence: confidence,
+        displayConfidence: `${(probability * 100).toFixed(1)}%`
+      });
+    } catch (err) {
+      setError(err.message);
+      setPrediction(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="prediction-panel">
-      <div style={{ margin: '24px 0' }}>
-        {!prediction && !loading && (
-          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-            <Cpu size={40} color="var(--primary-green)" style={{ marginBottom: '16px' }} />
-            <h3>AI Market Analysis</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              Generate real-time buy/sell signals based on technicals.
+  const getSignalClass = (signal) => {
+    if (signal === 'BUY' || signal === 'UP' || signal === 'STRONG BUY') return 'up';
+    if (signal === 'SELL' || signal === 'DOWN' || signal === 'STRONG SELL') return 'down';
+    return 'hold';
+  };
+
+  const getSignalIcon = (signal) => {
+    if (signal === 'BUY' || signal === 'UP' || signal === 'STRONG BUY') return <TrendingUp size={24} />;
+    if (signal === 'SELL' || signal === 'DOWN' || signal === 'STRONG SELL') return <TrendingDown size={24} />;
+    return <Pause size={24} />;
+  };
+
+  if (!ticker) {
+    return (
+      <motion.div 
+        className="prediction-card"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="prediction-body">
+          <div className="empty-state">
+            <Cpu size={48} style={{ color: 'var(--groww-purple)', marginBottom: 16 }} />
+            <p className="empty-state-text">
+              Select a stock to get AI-powered predictions
             </p>
-            <button className="btn btn-primary" onClick={handlePredict}>
-              Run Analysis
-            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div 
+      className="prediction-card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+    >
+      <div className="prediction-header">
+        <h3 className="prediction-title">
+          <Cpu size={20} />
+          AI Price Prediction
+        </h3>
+        <motion.button
+          className="predict-btn"
+          onClick={handlePredict}
+          disabled={loading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          {loading ? (
+            <>
+              <span className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <Cpu size={16} />
+              Get Prediction
+            </>
+          )}
+        </motion.button>
+      </div>
+
+      {/* Ownership Toggle */}
+      <div className="ownership-toggle-container">
+        <div className="ownership-toggle">
+          <input 
+            type="checkbox"
+            id="owns-stock-toggle"
+            checked={ownsStock}
+            onChange={(e) => setOwnsStock(e.target.checked)}
+          />
+          <label htmlFor="owns-stock-toggle" className="toggle-label">
+            <span className="toggle-switch">
+              <span className="toggle-slider"></span>
+            </span>
+            <span className="toggle-text">
+              {ownsStock ? "I own this stock" : "I don't own this stock"}
+            </span>
+          </label>
+        </div>
+        <div className="ownership-explanation">
+          {ownsStock 
+            ? "Get HOLD/SELL recommendations for your existing position" 
+            : "Get BUY/WAIT signals for potential new positions"
+          }
+        </div>
+      </div>
+
+      <div className="prediction-body">
+        {error && (
+          <div className="prediction-disclaimer" style={{ borderLeftColor: 'var(--groww-red)' }}>
+            <AlertTriangle size={16} />
+            <span>{error}</span>
           </div>
         )}
 
-        {loading && (
-          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-            Loading analysis for {ticker}...
+        {!prediction && !error && !loading && (
+          <div className="empty-state" style={{ padding: '40px 20px' }}>
+            <Cpu size={48} style={{ color: 'var(--groww-purple)', marginBottom: 16 }} />
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Click "Get Prediction" to analyze <strong>{stockName || ticker}</strong>
+            </p>
           </div>
         )}
 
-        {prediction && !loading && (
-          <div className="ai-results-grid">
-            <div className="prediction-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>SIGNAL</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-green)' }}>{prediction.signal}</div>
+        {prediction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="prediction-main-result">
+              <div className="prediction-signal">
+                <span className="signal-label">AI Signal</span>
+                <motion.div 
+                  className={`signal-badge ${getSignalClass(prediction.signal)}`}
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                >
+                  {getSignalIcon(prediction.signal)} {prediction.signal}
+                </motion.div>
+              </div>
+
+              <div className="prediction-probability">
+                <span className="probability-label">Confidence Score</span>
+                <div className="probability-value">
+                  {prediction.displayConfidence || 'N/A'}
                 </div>
-                <ConfidenceGauge score={prediction.probability * 100} />
-              </div>
-              <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Recommended Action: <span style={{ color: 'var(--text-primary)' }}>{prediction.action}</span>
-              </div>
-            </div>
-
-            <div className="prediction-card">
-              <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Target size={16} /> Targets
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Target</span>
-                <span style={{ fontWeight: '500', color: 'var(--primary-green)' }}>{prediction.trading_params.target_profit}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Stop Loss</span>
-                <span style={{ fontWeight: '500', color: 'var(--primary-red)' }}>{prediction.trading_params.stop_loss}</span>
+                <div className="probability-bar">
+                  <motion.div 
+                    className="probability-fill"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${prediction.probability * 100}%` }}
+                    transition={{ duration: 0.8 }}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="prediction-card" style={{ gridColumn: '1 / -1' }}>
-              <div style={{ marginBottom: '8px', fontWeight: '500' }}>Analysis</div>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{prediction.reason}</p>
+            <div className="prediction-details">
+              {prediction.action && (
+                <div className="prediction-detail-card">
+                  <span className="detail-label">Recommended Action</span>
+                  <span className="detail-value">{prediction.action}</span>
+                </div>
+              )}
+              
+              {prediction.reason && (
+                <div className="prediction-detail-card">
+                  <span className="detail-label">Analysis Reason</span>
+                  <span className="detail-value">{prediction.reason}</span>
+                </div>
+              )}
+
+              {prediction.confidence && (
+                <div className="prediction-detail-card">
+                  <span className="detail-label">Confidence Level</span>
+                  <span className="detail-value">{prediction.confidence}</span>
+                </div>
+              )}
+
+              {prediction.algorithm && (
+                <div className="prediction-detail-card">
+                  <span className="detail-label">Algorithm</span>
+                  <span className="detail-value">{prediction.algorithm}</span>
+                </div>
+              )}
             </div>
-          </div>
+
+            {/* Trading Parameters */}
+            {prediction.trading_params && (
+              <div className="stats-grid" style={{ marginTop: 16 }}>
+                <div className="stat-card">
+                  <div className="stat-label">
+                    <Target size={14} style={{ marginRight: 4 }} />
+                    Target Profit
+                  </div>
+                  <div className="stat-value green">
+                    {prediction.trading_params.target_profit}
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">
+                    <Shield size={14} style={{ marginRight: 4 }} />
+                    Stop Loss
+                  </div>
+                  <div className="stat-value red">
+                    {prediction.trading_params.stop_loss}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="prediction-disclaimer">
+              <AlertTriangle size={16} className="prediction-disclaimer-icon" />
+              <span>
+                For educational purposes only. This is not financial advice. 
+                Always do your own research before investing.
+              </span>
+            </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

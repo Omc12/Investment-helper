@@ -347,8 +347,8 @@ def get_stocks(search: Optional[str] = Query(None), limit: int = Query(8)):
 def get_stock_details(ticker: str = Query(...)):
     """Get comprehensive real-time stock details using Finnhub (primary) or yfinance (fallback)"""
     try:
-        # Clean ticker
-        if not ticker.endswith('.NS'):
+        # Clean ticker - allow .BO for BSE, default to .NS if no suffix
+        if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
             ticker = f"{ticker}.NS"
         
         # Check cache first
@@ -697,7 +697,7 @@ def get_stock_candles(
 ):
     """Get stock price history/candles using Finnhub (primary) or yfinance (fallback)"""
     try:
-        # Clean ticker
+        # Clean ticker - allow .BO for BSE, default to .NS if no suffix
         if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
             ticker = f"{ticker}.NS"
         

@@ -5,20 +5,16 @@ Minimal FastAPI application focused on ML predictions.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import API_TITLE, API_VERSION
-from routes import predict, stocks
+from routes import predict, stocks, chat
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="Stock Prediction API",
-    version="4.0",
-    description="AI-powered stock prediction API"
-)
+# Create FastAPI app
+app = FastAPI(title=API_TITLE, version=API_VERSION)
 
-# Configure CORS - Allow all origins for public API
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=False,  # Must be False when using allow_origins=["*"]
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -26,6 +22,7 @@ app.add_middleware(
 # Include routes
 app.include_router(predict.router, tags=["prediction"])
 app.include_router(stocks.router, tags=["stocks"])
+app.include_router(chat.router, tags=["chat"])
 
 # Simple health check
 @app.get("/health")

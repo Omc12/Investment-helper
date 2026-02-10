@@ -6,9 +6,12 @@ AI-powered stock insights for Indian (NSE) stocks. Features machine learning pre
 
 - **ML Predictions**: Ensemble model (XGBoost + LightGBM + HistGradientBoosting + RandomForest)
 - **99 Features**: 72 technical indicators + 27 fundamental metrics (P/E, P/B, ROE, etc.)
+- **BSE & NSE Support**: Supports both National Stock Exchange (.NS) and Bombay Stock Exchange (.BO) tickers.
 - **235K+ Training Samples**: Trained on Nifty 50 stocks + ETFs
 - **Real-time Data**: Live prices from Yahoo Finance
-- **AI News Analysis**: RAG with Newsdata.io + Google Gemini LLM for sentiment
+- **AI News Analysis (RAG)**: 
+    - **Chat**: Conversational interface for real-time market insights.
+    - **Model**: Sentiment-based probability adjustment (±20%) for predictions.
 - **Modern UI**: Dark Groww-inspired theme with interactive charts
 
 ## 🏗️ Architecture
@@ -16,14 +19,14 @@ AI-powered stock insights for Indian (NSE) stocks. Features machine learning pre
 ```
 ├── backend/                 # FastAPI Python backend
 │   ├── core/               # Configuration
-│   ├── routes/             # API endpoints
+│   ├── routes/             # API endpoints (stocks, predict, chat)
 │   ├── services/           # Business logic
 │   ├── models/             # Trained ML models
 │   ├── data/               # Training datasets
 │   └── train_model.py      # Model training script
 ├── frontend/               # React + Vite frontend
 │   └── src/
-│       ├── components/     # React components
+│       ├── components/     # React components (StockChart, RAGPanel, etc.)
 │       └── App.jsx         # Main application
 └── start.sh               # Start script
 ```
@@ -110,7 +113,7 @@ cp .env.example .env
 
 ### Optional: AI News Analysis (RAG)
 
-Enable AI-powered sentiment analysis from news articles:
+Enable AI-powered features for both **Chat** and **Predictions**:
 
 1. **Get free API keys** (takes 5 minutes each):
    - Newsdata.io: https://newsdata.io/register (200 requests/day)
@@ -122,7 +125,9 @@ Enable AI-powered sentiment analysis from news articles:
    GEMINI_API_KEY=your_gemini_key_here
    ```
 
-3. **Done!** The system will automatically fetch and analyze news for each prediction.
+3. **Enjoy!** 
+   - **Chat**: Use the "Ask AI" tab to query live market data.
+   - **Predictions**: The model will automatically adjust probabilities based on news sentiment (e.g., +10% probability for bullish news).
 
 ## 📁 Data Sources
 
