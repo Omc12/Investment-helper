@@ -58,16 +58,24 @@ Or in Vercel Dashboard:
 # 1. Create render.yaml in project root (see below)
 # 2. Push to GitHub
 # 3. Connect to Render.com
-# 4. Copy the backend URL
-# 5. Add to Vercel env: VITE_API_BASE_URL
+# 4. Add environment variables in Render dashboard:
+#    - GEMINI_API_KEY (get from https://aistudio.google.com/apikey)
+#    - NEWSDATA_API_KEY (get from https://newsdata.io)
+#    - FRONTEND_URL (your Vercel URL)
+# 5. Copy the backend URL
+# 6. Add to Vercel env: VITE_API_BASE_URL
 ```
 
 ### Option 2: Railway.app
 ```bash
 # 1. Connect Railway to GitHub
 # 2. Deploy backend folder
-# 3. Copy provided URL
-# 4. Add to Vercel env
+# 3. Add environment variables in Railway dashboard:
+#    - GEMINI_API_KEY (get from https://aistudio.google.com/apikey)
+#    - NEWSDATA_API_KEY (get from https://newsdata.io)
+#    - FRONTEND_URL (your Vercel URL)
+# 4. Copy provided URL
+# 5. Add to Vercel env: VITE_API_BASE_URL
 ```
 
 ### Option 3: Vercel Serverless (Advanced)
@@ -94,15 +102,36 @@ CORS_ORIGINS = [
 
 1. **Frontend**: `https://your-app.vercel.app`
 2. **Backend**: `https://your-backend.onrender.com/health`
-3. **API Connection**: Check browser console for errors
+3. Required API Keys for Production
 
----
+### GEMINI_API_KEY (Required for AI Chat)
+1. Visit https://aistudio.google.com/apikey
+2. Sign in with Google account
+3. Create API key
+4. Add to backend environment variables
+
+### NEWSDATA_API_KEY (Required for RAG News Features)
+1. Visit https://newsdata.io
+2. Sign up for free account
+3. Copy API key from dashboard
+4. Add to backend environment variables
+
+**Note**: Without these keys, the chat and prediction features will return neutral/default responses.
 
 ## Common Issues
 
 ### CORS Errors
 - Add your Vercel URL to backend CORS_ORIGINS
 - Redeploy backend after changes
+
+### API Not Found
+- Check VITE_API_BASE_URL is set correctly
+- Ensure backend is deployed and running
+
+### RAG Features Not Working
+- Verify GEMINI_API_KEY and NEWSDATA_API_KEY are set
+- Check API key quotas haven't been exceeded
+- Review backend logs for API errors
 
 ### API Not Found
 - Check VITE_API_BASE_URL is set correctly
