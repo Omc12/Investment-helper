@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 import requests
 import google.generativeai as genai
-from backend.core.config import GEMINI_API_KEY, NEWSDATA_API_KEY
+from core.config import GEMINI_API_KEY, NEWSDATA_API_KEY
 
 router = APIRouter()
 

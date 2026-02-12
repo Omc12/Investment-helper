@@ -15,7 +15,7 @@ def get_news_signal_features(ticker: str, date: str) -> dict:
     import json
     import requests
     import logging
-    from backend.core.config import GEMINI_API_KEY, NEWSDATA_API_KEY
+    from core.config import GEMINI_API_KEY, NEWSDATA_API_KEY
     
     try:
         import google.generativeai as genai
